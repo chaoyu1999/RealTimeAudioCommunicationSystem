@@ -4,9 +4,10 @@ import struct
 import websockets
 import collections
 import json
+
 DELAY_BUF_SIZE = 10  # 延迟抖动缓冲区大小
 MAX_DELAY = 0.1  # 最大延迟值，超过这个值直接丢弃
-CH_NUM = 2  # 电脑声道数
+CH_NUM = 1  # 电脑声道数
 
 
 async def server(websocket, path):
@@ -29,7 +30,7 @@ async def server(websocket, path):
                 for i in range(len(audio)):
                     tem = [0.0 for j in range(CH_NUM)]
                     for k in ch:
-                        tem[int(k)-1] = audio[i]
+                        tem[int(k) - 1] = audio[i]
                     res.extend(tem)
 
                 delay = (len(audio) / 11025)  # 计算延迟

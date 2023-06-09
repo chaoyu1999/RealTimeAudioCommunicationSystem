@@ -20,99 +20,111 @@
         }
 
 
-
         input[type="checkbox"] {
             margin-left: 10px;
         }
 
         button {
             margin-top: 20px;
-            width:100px;
-            height: 50px;
+            width: 300px;
+            height: 150px;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <label for="channel1">输出通道 1：</label>
-        <input type="checkbox" id="channel1" value="1" checked="checked"/><br>
-        <label for="channel2">输出通道 2：</label>
-        <input type="checkbox" id="channel2" value="2" /><br>
-        <label for="channel3">输出通道 3：</label>
-        <input type="checkbox" id="channel3" value="3" /><br>
-        <label for="channel4">输出通道 4：</label>
-        <input type="checkbox" id="channel4" value="4" /><br>
-        <label for="channel5">输出通道 5：</label>
-        <input type="checkbox" id="channel5" value="5" /><br>
-        <label for="channel6">输出通道 6：</label>
-        <input type="checkbox" id="channel6" value="6" /><br>
-        <label for="channel7">输出通道 7：</label>
-        <input type="checkbox" id="channel7" value="7" /><br>
-        <label for="channel8">输出通道 8：</label>
-        <input type="checkbox" id="channel8" value="8" /><br>
-        <label for="soundCard">声卡选择：</label>
-        <select id="soundCard">
-            <option value="onboard">板载声卡</option>
-            <option value="external">自备声卡</option>
-        </select><br>
-        <button id="start">start</button>
-        <button id="stop">stop</button>
-    </div>
+<div class="container">
+    <label for="channel1">输出通道 1：</label>
+    <input type="checkbox" id="channel1" value="1"/><br>
+    <label for="channel2">输出通道 2：</label>
+    <input type="checkbox" id="channel2" value="2"/><br>
+    <label for="channel3">输出通道 3：</label>
+    <input type="checkbox" id="channel3" value="3"/><br>
+    <label for="channel4">输出通道 4：</label>
+    <input type="checkbox" id="channel4" value="4"/><br>
+    <label for="channel5">输出通道 5：</label>
+    <input type="checkbox" id="channel5" value="5"/><br>
+    <label for="channel6">输出通道 6：</label>
+    <input type="checkbox" id="channel6" value="6"/><br>
+    <label for="channel7">输出通道 7：</label>
+    <input type="checkbox" id="channel7" value="7"/><br>
+    <label for="channel8">输出通道 8：</label>
+    <input type="checkbox" id="channel8" value="8"/><br>
+    <label for="soundCard">声卡选择：</label>
+    <select id="soundCard">
+        <option value="onboard">板载声卡</option>
+        <option value="external">自备声卡</option>
+    </select><br>
+    <button id="start">start</button>
+    <button id="stop">stop</button>
+</div>
 
-    <script>
-        let ws
-        let sta = 1
-        ws = new WebSocket('ws://127.0.0.1:7865')
-        ws.onopen = () => {
+<script>
+    let ws
+    let sta = 1
+    ws = new WebSocket('ws://127.0.0.1:7865')
+    ws.onopen = () => {
         console.log('socket 已连接')
-            // 发送输出通道和声卡选择给服务器
-            const selectedChannels = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+
+    }
+    ws.onerror = (e) => {
+        console.log('error', e);
+    }
+    ws.onclose = () => {
+        sta = 0
+        console.log('socket closed')
+    }
+    // 连接 websocket
+    document.getElementById('start').onclick = function () {
+        if (sta === 0)
+            location.reload();
+
+        var startButton = document.getElementById('start');
+        startButton.innerHTML = '连接中，请稍等……';
+
+        // 发送输出通道和声卡选择给服务器
+        const selectedChannels = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
             .map(checkbox => checkbox.value);
-            const selectedSoundCard = document.getElementById('soundCard').value;
-            const data = {
+        const selectedSoundCard = document.getElementById('soundCard').value;
+        const data = {
             channels: selectedChannels,
             soundCard: selectedSoundCard
-            };
-            ws.send(JSON.stringify(data));
-        }
-        ws.onerror = (e) => {
-            console.log('error', e);
-        }
-        ws.onclose = () => {
-            sta = 0
-            console.log('socket closed')
-        }
-        // 连接 websocket
-        document.getElementById('start').onclick = function () {
-            if(sta === 0)
-                location.reload();
-            let mediaStack
-            var audioCtx = new AudioContext({ sampleRate: 11025 });
-            var scriptNode = audioCtx.createScriptProcessor(4096, numberOfInputChannels = 1, numberOfOutputChannels = 1);
-            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-                .then(function (stream) {
-                    mediaStack = stream
-                    var source = audioCtx.createMediaStreamSource(stream)
-                    source.connect(scriptNode);
-                    scriptNode.connect(audioCtx.destination);
-                })
-                .catch(function (err) {
-                    console.log('err', err)
-                });
-            scriptNode.onaudioprocess = function (audioProcessingEvent) {
-                var inputBuffer = audioProcessingEvent.inputBuffer;
-                var inputData = inputBuffer.getChannelData(0);
-                ws.send(inputData)
-            }
-            document.getElementById('stop').onclick = function () {
-                ws.close();
-                mediaStack.getTracks()[0].stop();
-                scriptNode.disconnect();
-                location.reload();
-            };
-        }
-    </script>
+        };
+        ws.send(JSON.stringify(data));
+        let mediaStack;
+        var audioCtx = new AudioContext({sampleRate: 11025});
+        var scriptNode = audioCtx.createScriptProcessor(4096, numberOfInputChannels = 1, numberOfOutputChannels = 1);
+        navigator.mediaDevices.getUserMedia({audio: true, video: false})
+            .then(function (stream) {
+                mediaStack = stream;
+                var source = audioCtx.createMediaStreamSource(stream);
+                source.connect(scriptNode);
+                scriptNode.connect(audioCtx.destination);
+                scriptNode.onaudioprocess = function (audioProcessingEvent) {
+                    var inputBuffer = audioProcessingEvent.inputBuffer;
+                    var inputData = inputBuffer.getChannelData(0);
+                    ws.send(inputData);
+                };
+
+                setTimeout(function () {
+                    startButton.innerHTML = '可以开始说话……';
+                    startButton.style.backgroundColor = 'red'; // 可以根据需要设置按钮的颜色
+                }, 4000);
+            })
+            .catch(function (err) {
+                console.log('err', err);
+            });
+
+        document.getElementById('stop').onclick = function () {
+            ws.close();
+            mediaStack.getTracks()[0].stop();
+            scriptNode.disconnect();
+            location.reload();
+        };
+    };
+
+
+</script>
 </body>
 
 </html>
